@@ -1,6 +1,8 @@
 # Schymanski_leaf-scale_2016
 Supporting information for article: http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/
 
+You can either access the files directly on the cloud.sagemath.com server [here]( https://cloud.sagemath.com/projects/e66470cf-1fa4-48bc-8a49-2513f177cf8a/files/Schymanski_leaf-scale_2016/), or follow the below instructions.
+
 ## Instructions on how to use these files
 - Download all files as zip file and extract to a local directory on your computer.
 - Install [sage](http://www.sagemath.org) on your local computer and start the ipython notebook to work with the files, 
