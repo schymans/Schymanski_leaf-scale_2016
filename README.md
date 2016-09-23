@@ -21,7 +21,7 @@ or:
 - Access the published worksheets directly on the cloud.sagemath.com server [here]( https://cloud.sagemath.com/projects/e66470cf-1fa4-48bc-8a49-2513f177cf8a/files/Schymanski_leaf-scale_2016/)
 
 ## Description of folders
-### .
+### Main folder
 The main folder contains the various worksheets (.ipynb files), the README.md and licence information. 
 ### data
 The data folder contains data files accessed by the worksheets
