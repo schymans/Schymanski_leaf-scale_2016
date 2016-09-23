@@ -20,7 +20,7 @@
 # ```
 # 
 
-# In[1]:
+# In[8]:
 
 get_ipython().magic(u'matplotlib inline')
 import numpy as np  # for data array operations
@@ -260,11 +260,11 @@ def fun_include_ipynb(worksheet, del1 = True, output = True):
         os.remove(str1)
 
 
-# Below, we export the above commands to a file called Worksheet_setup.sage, which can be loaded in other worksheets by typing:
+# Below, we export the above commands to a file called Worksheet_setup.sage in the temp folder, which can be loaded in other worksheets by typing:
 # 
-# `load('Worksheet_setup.sage')`
+# `load('temp/Worksheet_setup.sage')`
 
-# In[2]:
+# In[9]:
 
 str1 = 'ipython nbconvert  --to=python \'./Worksheet_setup.ipynb\''
 print str1
@@ -289,15 +289,9 @@ except OSError as e:
     except OSError as e:
         print >>sys.stderr, "Execution failed:", e        
 
-
-os.system(str1)
+#os.system(str1)
 
 str1 = 'Worksheet_setup.py'
-str2 = 'Worksheet_setup.sage'
+str2 = 'temp/Worksheet_setup.sage'
 os.rename(str1, str2)
-
-
-# In[ ]:
-
-
 
