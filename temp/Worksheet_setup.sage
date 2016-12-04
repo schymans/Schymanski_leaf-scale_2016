@@ -20,7 +20,7 @@
 # ```
 # 
 
-# In[8]:
+# In[1]:
 
 get_ipython().magic(u'matplotlib inline')
 import numpy as np  # for data array operations
@@ -71,26 +71,54 @@ except:     # in newer versions of sage, need to use _tab_completion() instead o
 udict = {}
 cdict = {}
 docdict = {}
+dict_latex = {}
+dict_domain = {}
+dict_vars ={}
 
-def var2(name,doc='',units=1,domain1='real',latexname='',value = 1234):
+
+def var2(name, doc='', units=1, domain1='real', latexname='', value = False):
     '''
     Creates a symbolic variable in the given domain (standard:'real') and with the given 
     latexname. Further, it adds the string doc to docdict, the units to udict and the value
-    to cdict. All entries are optional except for name.
+    to cdict. All entries are optional except for name. Note that the information passed as
+    domain1 is saved as an assumption, e.g. 'a is read'. All assumptions can be viewed as a
+    list, using the command assumptions().
     Usage example: 
-        sage: var2('name','doc',watt/meter^2,'positive','N_{ame}',1.0)
+        sage: var2('x', 'Distance' , units=meter, domain1 = 'positive', latexname = 'x_{1-2}', value = 1.0)
     '''
     if len(latexname)>0:
         z = var(name,domain = domain1,latex_name = latexname)   
     else:
         z = var(name,domain = domain1) 
-    if len(doc)>0:
-        docdict[var(name)] = doc
-    udict[var(name)] = var(name)*units
-    if value != 1234:
-        cdict[var(name)] = value
+    var1 = eval(name)
+    dict_domain[var1] = domain1
+    dict_latex[var1] = var1._latex_()
+    docdict[var1] = doc
+    udict[var1] = units
+    dict_vars[var1] = {'doc': doc, 'units': units, 'domain1': domain1, 'latexname': latexname, 'value': value}
+    if value:
+        cdict[var1] = value
     return z
-    
+
+def fun_loadvars(vardict = False):
+    '''
+    Loads all information related to symbolic variables defined using var2.
+    Usage example:
+        sage: allvars = fun_loadvars()
+    '''
+    if vardict:
+        variables = vardict.keys()
+        for var1 in variables:
+            var2(str(var1), doc = vardict[var1]['doc'], units = vardict[var1]['units'], domain1 = vardict[var1]['domain1'],                 latexname = vardict[var1]['latexname'], value = vardict[var1]['value'])
+        
+    else:    
+        variables = docdict.keys()
+        for var1 in variables:
+            if var1 in cdict.keys():
+                var2(str(var1), doc=docdict[var1], units=udict[var1], domain1 = dict_domain[var1],                     latexname=dict_latex[var1], value=cdict[var1])
+            else:
+                var2(str(var1), doc=docdict[var1], units=udict[var1], domain1 = dict_domain[var1],                     latexname=dict_latex[var1])
+                     
 # Workaround from http://ask.sagemath.org/question/10260/convert-derived-si-units-to-base-units/
 def convert(expr):
      op = expr.operator()
@@ -107,13 +135,37 @@ def units_check(eq, sfull = True):
     '''
     Checks whether all arguments are keys in udict and returns simplified units
     '''
+    global udict, dict_units
+    udict1 = {}
+    # Need to multiply units with variable, so that we can devide by the symbolic equation later:
+    for key1 in udict.keys():
+        udict1[key1] = key1*udict[key1]
     for blah in eq.arguments():
         udict[blah]
     eq.show()
     if sfull:
-        return convert(eq.subs(udict)/eq).simplify_full()
+        return convert(eq.subs(udict1)/eq).simplify_full()
     else:
-        return convert(eq.subs(udict)/eq)
+        return convert(eq.subs(udict1)/eq)
+    
+def fun_units_formatted(variable):
+    '''
+    Returns units of variable expanded to exponential notation.
+    
+    '''
+    global udict, subsdict
+    units1 = (eval(variable)*udict[eval(variable)]/eval(variable)).subs(subsdict)   # multiplication and division by the variable ensures that units1 is a symbolic expression, even if udict[var] = 1
+    facs = units1.factor_list()
+    str1 = ''
+    for term1 in facs:
+        op1 = term1[1]
+        if op1==1:
+            str1 = str(term1[0]) + ' ' + str1
+        if op1!=1:
+            str1 = str1 +' ' + str(term1[0])
+            str1 = str1 + '$^{' + str(op1) + '}$ '
+    return str1
+
 
     
 def plot_fit(xdata, ydata, model, initial_guess = None, parameters = None, variables = None):
@@ -194,6 +246,49 @@ def fun_eq(eq, sfull = True):
     print units_check(eq)
     return eq
 
+def fun_export_ipynb(worksheet, folder):
+    '''
+    Exports worksheet.ipynb to a .py or .sage depending on kernel.
+    Example:
+    fun_export_ipynb('Worksheet_setup', 'temp/')
+    Need to import json before using this function. Unless option output=True is given,
+    each line of text has a semicolon added in the .py file, preventing any output.
+    '''
+    str1 = 'jupyter nbconvert  --to=python \'' + worksheet+'.ipynb\''
+    print str1
+    print 'Exporting specified worksheet to .py file...'
+    
+    try:
+        retcode = os.system(str1)
+        if retcode < 0:
+            print >>sys.stderr, "nbconvert was terminated by signal", -retcode
+        else:
+            print >>sys.stderr, "nbconvert returned", retcode
+    except OSError as e:
+        print >>sys.stderr, "Execution failed:", e
+        print >>sys.stderr, "Trying ipython nbconvert instead..."
+        str1 = 'ipython nbconvert  --to script \'' + worksheet+'.ipynb\''    # for new version of python
+        try:      
+            retcode = os.system(str1)
+            if retcode < 0:
+                print >>sys.stderr, "nbconvert was terminated by signal", -retcode
+            else:
+                print >>sys.stderr, "nbconvert returned", retcode
+        except OSError as e:
+            print >>sys.stderr, "Execution failed:", e              
+
+    str1 = worksheet + '.py'
+    
+    print 'Checking if specified ipynb file was run with sage kernel...'
+    with open(worksheet+'.ipynb') as data_file:    
+        data = json.load(data_file)
+    
+    if data['metadata']['kernelspec']['name'][0:4] == 'sage':
+        print 'Renaming .py file to .sage if notebook kernel was sage (to avoid exponent error)'
+        str2 = folder + worksheet + '.sage'
+        os.rename(str1, str2)
+                     
+
 def fun_include_ipynb(worksheet, del1 = True, output = True):
     '''
     Exports worksheet.ipynb to a sage file and loads it into current worksheet.
@@ -263,35 +358,14 @@ def fun_include_ipynb(worksheet, del1 = True, output = True):
 # Below, we export the above commands to a file called Worksheet_setup.sage in the temp folder, which can be loaded in other worksheets by typing:
 # 
 # `load('temp/Worksheet_setup.sage')`
+# However, to avoid re-exporting the file every time it is loaded, we will comment out the command and instead execute it from a different worksheet, Worksheet_update.ipynb.
 
-# In[9]:
+# In[2]:
 
-str1 = 'ipython nbconvert  --to=python \'./Worksheet_setup.ipynb\''
-print str1
-print 'Exporting Worksheet_setup.ipynb to .py file...'
+#fun_export_ipynb('Worksheet_setup', 'temp/')
 
-try:
-    retcode = os.system(str1)
-    if retcode < 0:
-        print >>sys.stderr, "nbconvert was terminated by signal", -retcode
-    else:
-        print >>sys.stderr, "nbconvert returned", retcode
-except OSError as e:
-    print >>sys.stderr, "Execution failed:", e
-    print >>sys.stderr, "Trying jupyter nbconvert instead..."
-    str1 = 'jupyter nbconvert  --to script \'./Worksheet_setup.ipynb\''    # for new version of python
-    try:      
-        retcode = os.system(str1)
-        if retcode < 0:
-            print >>sys.stderr, "nbconvert was terminated by signal", -retcode
-        else:
-            print >>sys.stderr, "nbconvert returned", retcode
-    except OSError as e:
-        print >>sys.stderr, "Execution failed:", e        
 
-#os.system(str1)
+# In[ ]:
 
-str1 = 'Worksheet_setup.py'
-str2 = 'temp/Worksheet_setup.sage'
-os.rename(str1, str2)
+
 

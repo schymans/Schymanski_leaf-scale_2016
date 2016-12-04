@@ -39,7 +39,16 @@ These files consist of input code extracted from the .ipynb worksheets with the 
 These files contain snapshots of worksheet data for quick import into other worksheets.
 ### Worksheet_setup.ipynb
 Contains code to setup the other worksheets. Only relevant if you are interested in the inner workings of the code.
-### Leaf_enbalance_eqs.ipynb
+### Worksheet_update.ipynb
+Converts Worksheet_setup.ipynb to a .sage file, so that it can be more easily imported by other worksheets.
+### leaf_enbalance_eqs.ipynb
 Contains variable definitions and equations related to the numerical leaf energy balance model.
 ### E_PM_eqs.ipynb
-Contains variable definitions and equations related to the analytical solutions of the leaf energy balance. It builds on definitions and equations provided in Leaf_enbalance_eqs.ipynb
+Contains variable definitions and equations related to the analytical solutions of the leaf energy balance. It builds on definitions and equations provided in leaf_enbalance_eqs.ipynb
+### leaf_chamber_eqs.ipynb
+Equations to compute wind tunnel energy balance etc. It builds on definitions and equations provided in leaf_enbalance_eqs.ipynb
+### stomatal_cond_eqs.ipynb
+Equations to compute stomatal conductance of perforated foils
+### leaf_chamber_data.ipynb
+Evaluation and plotting of experimental data from leaf wind tunnel and additional data plots.
+
