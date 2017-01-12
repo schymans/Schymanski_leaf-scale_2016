@@ -1,5 +1,8 @@
 # Schymanski_leaf-scale_2016
-Supporting information for article: http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/
+
+Code and data to reproduce computational results and plots presented in: 
+[**Leaf-scale experiments reveal important omission in the Penman-Monteith equation.**](http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363)
+Hydrol. Earth Syst. Sci. Discuss., doi:10.5194/hess-2016-363, 2017
 
 You can either access the files directly on the cloud.sagemath.com server [here]( https://cloud.sagemath.com/projects/e66470cf-1fa4-48bc-8a49-2513f177cf8a/files/Schymanski_leaf-scale_2016/), or follow the below instructions.
 
