@@ -21,7 +21,7 @@ get_ipython().run_cell_magic(u'capture', u'storage', u"# The above redirects all
 
 # In[2]:
 
-# From leaf_chamber_eqs, Leaf_enbalance2s_eqs and E_PM_eqs
+# Importing variables and equations from other sessions
 load_session('temp/leaf_enbalance_eqs.sobj')
 dict_vars1 = dict_vars.copy()
 
@@ -31,8 +31,16 @@ dict_vars1.update(dict_vars)
 load_session('temp/leaf_chamber_eqs.sobj')
 dict_vars1.update(dict_vars)
 
-dict_vars = dict_vars1.copy()
-fun_loadvars(vardict=dict_vars)   # re-loading variable definitions
+# Assigning information stored in dict_vars1 to docdict, udict and cdict. 
+# Could also run `fun_loadvars(dict_vars1)`, but it takes long.
+for var1 in dict_vars1.keys():
+    #assume(var1, dict_vars1[var1]['domain1'])
+    val = dict_vars1[var1]['doc']
+    if val: docdict[var1] = val
+    val = dict_vars1[var1]['units']
+    if val: udict[var1] = val
+    val = dict_vars1[var1]['value']
+    if val: cdict[var1] = val
 
 
 # In[3]:
@@ -86,7 +94,7 @@ def fun_SS(vdict1):
     vdict[E_l] = eq_El.rhs().subs(eq_Elmol).subs(vdict)    
 
     # Tl
-    try: vdict[T_l] = find_root((eq_Rs_enbal - R_s).rhs().subs(vdict), 273, 373)
+    try: vdict[T_l] = find_root((eq_Rs_enbal - R_s).rhs().subs(vdict), 273, 373, rtol = 1e-6)
     except: print 'something missing: ' + str((eq_Rs_enbal - R_s).rhs().subs(vdict))
     
     # Re-inserting T_l
@@ -101,6 +109,62 @@ def fun_SS(vdict1):
 
 
 # In[5]:
+
+def fun_SS(vdict1):
+    '''
+    Steady-state T_l, R_ll, H_l and E_l under forced conditions.
+    Parameters are given in a dictionary (vdict) with the following entries:
+    a_s, a_sh, L_l, P_a, P_wa, R_s, Re_c, T_a, g_sw, v_w
+    ''' 
+    vdict = vdict1.copy()
+    if not T_w in vdict1.keys():
+        vdict[T_w] = vdict[T_a]
+
+
+    # Nusselt number
+    vdict[nu_a] = eq_nua.rhs().subs(vdict)
+    vdict[Re] = eq_Re.rhs().subs(vdict)
+    vdict[Nu] = eq_Nu_forced_all.rhs().subs(vdict)
+    
+    # h_c
+    vdict[k_a] = eq_ka.rhs().subs(vdict)
+    vdict[h_c] = eq_hc.rhs().subs(vdict)
+ 
+    # gbw
+    vdict[D_va] = eq_Dva.rhs().subs(vdict)
+    vdict[alpha_a] = eq_alphaa.rhs().subs(vdict)
+    vdict[rho_a] =  eq_rhoa.rhs().subs(vdict)
+    vdict[Le] =  eq_Le.rhs().subs(vdict)
+    vdict[g_bw] = eq_gbw_hc.rhs().subs(vdict)   
+    
+    # Hl, Rll
+    vdict[R_ll] = eq_Rll.rhs().subs(vdict)
+    vdict[H_l] = eq_Hl.rhs().subs(vdict)   
+
+    # El
+    vdict[g_tw] =  eq_gtw.rhs().subs(vdict)
+    vdict[C_wa] = eq_Cwl.rhs()(P_wl = P_wa, T_l = T_a).subs(vdict)
+    vdict[P_wl] = eq_Pwl.rhs().subs(vdict)
+    vdict[C_wl] = eq_Cwl.rhs().subs(vdict)
+    vdict[E_lmol] = eq_Elmol.rhs().subs(vdict)
+    vdict[E_l] = eq_El.rhs().subs(eq_Elmol).subs(vdict)    
+
+    # Tl
+    try: vdict[T_l] = find_root((eq_Rs_enbal - R_s).rhs().subs(vdict), 273, 373, rtol = 1e-6)
+    except: print 'something missing: ' + str((eq_Rs_enbal - R_s).rhs().subs(vdict))
+    
+    # Re-inserting T_l
+    Tlss = vdict[T_l]
+    for name1 in [C_wl, P_wl, R_ll, H_l, E_l, E_lmol]:
+        vdict[name1] = vdict[name1].subs(T_l = Tlss)
+    
+    # Test for steady state
+    if n((E_l + H_l + R_ll - R_s).subs(vdict))>1.:
+        return 'error in energy balance: El + Hl + Rll - R_s = ' + str(n((E_l + H_l + R_ll - R_s).subs(vdict))) 
+    return vdict
+
+
+# In[6]:
 
 # Test using data from Fig. 8 in Ball et al. 1988
 vdict = cdict.copy()
@@ -121,7 +185,7 @@ dict_print(resdict, list_names = [H_l, E_l, T_l])
 
 # ### Model by Ball et al., 1988
 
-# In[6]:
+# In[7]:
 
 # for model by Ball et al. 1988
 var2('g_svmol', 'Stomatal condutance to vapour in molar units', mole/meter^2/second)
@@ -139,7 +203,7 @@ print units_check(eq_Hl_Ball).simplify_full()
 print units_check(eq_El_Ball).simplify_full()
 
 
-# In[7]:
+# In[8]:
 
 def fun_SS_Ball(vdict1):
     '''
@@ -171,7 +235,7 @@ def fun_SS_Ball(vdict1):
     
     enbal = El + Hl + Rll - R_s == 0 
     #print enbal(R_ll = Rll, H_l = Hl, E_l = El).subs(vdict)
-    Tss = find_root(enbal(R_ll = Rll, H_l = Hl, E_l = El).subs(vdict), 273, 373)
+    Tss = find_root(enbal(R_ll = Rll, H_l = Hl, E_l = El).subs(vdict), 273, 373, rtol = 1e-6)
     
     Rll1 = Rll(T_l = Tss)
     Hl1= Hl(T_l = Tss)
@@ -188,7 +252,7 @@ def fun_SS_Ball(vdict1):
     return {'Tl_ball':n(Tss), 'Rll_ball':n(Rll1), 'Hl_ball':n(Hl1), 'El_ball':n(El1), 'rs_ball': vdict[r_s], 'rbstar_ball': vdict[r_bstar], 'rb_ball': vdict[r_b]}
 
 
-# In[8]:
+# In[9]:
 
 # Fig. 8 in Ball et al. 1988
 vdict = cdict.copy()
@@ -219,7 +283,7 @@ print 'T_a: ' + str(vdict[T_a])
 
 # ### Analytical models
 
-# In[9]:
+# In[10]:
 
 def fun_SS_PM(vdict1):
     '''
@@ -360,7 +424,13 @@ def fun_SS_PM(vdict1):
 
 # ## Functions to read data
 
-# In[10]:
+# In[11]:
+
+# File for tracking file names used here
+list_inputfilenames = []
+
+
+# In[12]:
 
 def fun_read_csv(fname1, lc_datetime_format = "%Y-%m-%d %H:%M:%S", lc_timepos = [], split1 = ';'):
     '''
@@ -429,10 +499,11 @@ def fun_read_csv(fname1, lc_datetime_format = "%Y-%m-%d %H:%M:%S", lc_timepos = 
         print 'Error in dtype'
         return csvdata
     pretty_print(table(htmldata, header_row=True, align='center'))
+    list_inputfilenames.append(fname)
     return lc_data
 
 
-# In[11]:
+# In[13]:
 
 def fun_read_campbell(fname1, nr_datetime_format = "%Y-%m-%d %H:%M:%S.%f", datelen = 21, datelast = '.0'):
     '''
@@ -479,10 +550,11 @@ def fun_read_campbell(fname1, nr_datetime_format = "%Y-%m-%d %H:%M:%S.%f", datel
     for i in srange(len(nr_nameslist) - 2):
             nr_formatslist.append('float')
     nr_data = np.array(csvdata,dtype = zip(nr_nameslist,nr_formatslist))
+    list_inputfilenames.append(fname)
     return nr_data
 
 
-# In[12]:
+# In[14]:
 
 def fun_read_li(li_fname, prefix1 = ['1900-01-01_']):
     '''
@@ -561,24 +633,25 @@ def fun_read_li(li_fname, prefix1 = ['1900-01-01_']):
     li_data = np.array(csvdata,dtype = zip(li_nameslist,li_formatslist))
     outdata.append(li_data)
     print 'number of data sets: '+str(len(outdata))
+    list_inputfilenames.append(fname)
     return outdata
 
 
 # ## Equations to infer conductances from flux measurements
 
-# In[13]:
+# In[15]:
 
 eq_gsw_gtw = solve(eq_gtw, g_sw)[0]
 units_check(eq_gsw_gtw).simplify_full()
 
 
-# In[14]:
+# In[16]:
 
 eq_gtw_Elmol = solve(eq_Elmol.subs(eq_Cwa, eq_Cwl), g_tw)[0]
 units_check(eq_gtw_Elmol)
 
 
-# In[15]:
+# In[17]:
 
 eq_hc_Hl = solve(eq_Hl, h_c)[0]
 units_check(eq_hc_Hl)
@@ -586,7 +659,7 @@ units_check(eq_hc_Hl)
 
 # ## Functions to automate computation of derived results and plotting
 
-# In[16]:
+# In[18]:
 
 def fun_results(lc_data, vdict1 = {}, poslist = [], nameRs = '', ndict1 = {}, Pwinoffset = 0, Tdewfac = 1.06,                 Tdewoffset = -2.45):
     '''
@@ -725,7 +798,8 @@ def fun_results(lc_data, vdict1 = {}, poslist = [], nameRs = '', ndict1 = {}, Pw
     #print zip(nameslist,formatslist)
     try:
         results = np.array(results,dtype = zip(nameslist,formatslist))
-    except:
+    except Exception, e:
+        print e
         print results
         results1 = np.nan_to_num(results)  # Converts any NaN to something that can be expressed as a float
         print nameslist
@@ -737,8 +811,9 @@ def fun_results(lc_data, vdict1 = {}, poslist = [], nameRs = '', ndict1 = {}, Pw
     return results
 
 
-# In[17]:
+# In[19]:
 
+@fun_tracker(attribute='fname')
 def fun_plot_diag(results1, varname1 = 'v_w', axeslabel1 = 'Wind speed (m s$^{-1}$)', Emods = [('E_l', '(mod.)', '-')], Hmods = [('H_l', '(mod.)', '-')], Rmods = [('R_ll', '(mod.)', '-')],                  energy=True, esums = False, esumsmod = False, rll = False, Hobs = True, fsize = 20, lfsize = 20, axfsize = 1.2, psize = 100, figsize1=[8,6], dpi1 = 50,                  leglength = 2, lwidth = 2, fname = False):
     '''
     Sorts results1 for variable varname1 and plots diagnostic plots 
@@ -793,7 +868,7 @@ def fun_plot_diag(results1, varname1 = 'v_w', axeslabel1 = 'Wind speed (m s$^{-1
 
 # ## Black foil, 35.4 holes/mm2, Figures 6b and 7b in http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/
 
-# In[18]:
+# In[20]:
 
 fname = 'exp_35_4_Tdew.csv'
 lc_data_orig = fun_read_csv(fname, lc_timepos = [0, 16, 25, 26, 30, 31])
@@ -803,7 +878,7 @@ lc_data_orig = lc_data.copy()
 lc_data_35_Pwa = lc_data.copy()
 
 
-# In[19]:
+# In[21]:
 
 # Fig. 6b
 vdict = cdict.copy()
@@ -824,7 +899,7 @@ fname = path_figs + '35_Pwa.eps'
 fun_plot_diag(results1, varname1 = 'P_wa', axeslabel1 = 'Vapour pressure (Pa)', Emods = [('E_l', '(mod.)', '-')], Hmods = [('H_l', '(mod.)', '-')],               Rmods = [('R_ll', '(mod.)', '-')], esums = True, rll = True, dpi1=50, fname=fname)
 
 
-# In[20]:
+# In[22]:
 
 # fig. 7b
 fname = path_figs + '35_Pwa_anal.eps'
@@ -834,7 +909,7 @@ fun_plot_diag(results1, varname1 = 'P_wa', axeslabel1 = 'Vapour pressure (Pa)', 
 # ## 35.4 holes/mm2, varying wind speed,  Figures 6a and 7a in http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/
 # 
 
-# In[21]:
+# In[23]:
 
 fname = 'exp_35_4_vw.csv'
 lc_data_orig = fun_read_csv(fname, lc_timepos = [])
@@ -843,7 +918,7 @@ lc_data['water_flow_avg'] = -lc_data_orig['water_flow_avg'] # Making flow positi
 lc_data_orig = lc_data.copy()
 
 
-# In[22]:
+# In[24]:
 
 # Fig. 6a
 vdict = cdict.copy()
@@ -865,7 +940,7 @@ fname = path_figs + '35_vw.eps'
 fun_plot_diag(results1, Emods = [('E_l', '(mod.)', '-')], Hmods = [('H_l', '(mod.)', '-')],               Rmods = [('R_ll', '(mod.)', '-')], esums = True, rll = True, dpi1=50, fname=fname)
 
 
-# In[23]:
+# In[25]:
 
 # Fig. 7a
 fname = path_figs + '35_vw_anal.eps'
@@ -875,7 +950,7 @@ fun_plot_diag(results1, Emods = [('lin_E_l', '(Rlin)', '-'), ('PS_E_l', '(MUc)',
 # ## Leaf 7_1,  Figures 6c and 7c 
 # (in http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/)
 
-# In[24]:
+# In[26]:
 
 fname1 = 'new_tunnel_chamber_2Tin_leaf.csv'
 fname = path_data + fname1
@@ -918,19 +993,19 @@ for i in srange(len(data)):
 table(tabledata)
 
 
-# In[25]:
+# In[27]:
 
 data.dtype
 
 
-# In[26]:
+# In[28]:
 
 # Identifying the data sets with low and high wind speed
 pos_vlow = [3,4,5,6,7,9]
 pos_vhigh = [10,11]
 
 
-# In[27]:
+# In[29]:
 
 # Fig. 6c
 vdict = cdict.copy()
@@ -951,7 +1026,7 @@ fname = path_figs + '7_Pwa.eps'
 fun_plot_diag(results1, varname1 = 'P_wa', axeslabel1 = 'Vapour pressure (Pa)',  Emods = [('E_l', '(mod.)', '-')], Hmods = [('H_l', '(mod.)', '-')],               Rmods = [('R_ll', '(mod.)', '-')], esums = True, rll = True, dpi1=50, fname=fname)
 
 
-# In[28]:
+# In[30]:
 
 fname = path_figs + '7_Pwa_anal.eps'
 fun_plot_diag(results1, varname1 = 'P_wa', axeslabel1 = 'Vapour pressure (Pa)', Emods = [('lin_E_l', '(Rlin)', '-'), ('PS_E_l', '(MUc)', '-.'), ('PM_E_l', '(PM)', '--'), ('MU_E_l', '(MU)', ':')],               Hmods = [('lin_H_l', '(Rlin)', '-'), ('PS_H_l', '(MUc)', '-.'), ('PM_H_l', '(PM)', '--'), ('MU_H_l', '(MU)', ':')], fname=fname)
@@ -959,7 +1034,7 @@ fun_plot_diag(results1, varname1 = 'P_wa', axeslabel1 = 'Vapour pressure (Pa)', 
 
 # ### Comparison of 35 and 7 pores/mm2
 
-# In[29]:
+# In[31]:
 
 leglength=2
 lfsize = 12
@@ -1033,7 +1108,7 @@ P.show(fontsize = lfsize, fig_tight = True, figsize=figsize1, aspect_ratio = 'au
 # # Simulations for varying radiation and air temperature (Fig. 8)
 # (in http://www.hydrol-earth-syst-sci-discuss.net/hess-2016-363/)
 
-# In[30]:
+# In[32]:
 
 # Fig. 8a
 # Conditions similar to experiment with 35.4 holes/mm2
@@ -1099,7 +1174,7 @@ P.show(fontsize = fsize, axes_labels_size = axfsize, fig_tight = True, figsize=f
 P.save(path_figs + 'numexp_Rs.png', fontsize = fsize, axes_labels_size = axfsize, fig_tight = True, figsize=figsize1, aspect_ratio = 'automatic', legend_font_size = 14, legend_loc=(1.01,0))
 
 
-# In[31]:
+# In[33]:
 
 # Fig. 8b
 # Conditions similar to experiment with 35.4 holes/mm2, 350 W/m2 irradiance
@@ -1166,6 +1241,21 @@ for i in srange(2,len(vary)):
 P.axes_labels([xlabel, ylabel])
 P.show(fontsize = fsize, axes_labels_size = axfsize, fig_tight = True, figsize=figsize1, aspect_ratio = 'automatic', legend_font_size = lfsize, legend_loc=(1.01,0))
 P.save(path_figs + 'numexp_T.png', fontsize = fsize, axes_labels_size = axfsize, fig_tight = True, figsize=figsize1, aspect_ratio = 'automatic', legend_font_size = 14, legend_loc=(1.01,0))
+
+
+# # Summary of input and output files
+
+# In[35]:
+
+list_sobj = ['temp/Worksheet_setup.sobj', 'temp/leaf_enbalance_eqs.sobj', 'temp/E_PM_eqs.sobj','temp/leaf_chamber_eqs.sobj']
+print list_sobj
+print list_inputfilenames
+
+
+# In[36]:
+
+list_figs = [path_figs + 'numexp_Rs.png', path_figs + 'numexp_T.png']
+list_figs + fun_plot_diag.registry
 
 
 # In[ ]:

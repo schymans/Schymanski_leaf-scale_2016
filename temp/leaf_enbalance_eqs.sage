@@ -435,7 +435,7 @@ vdict[E_l]
 
 # Now, we have a dictionary with $E_l$, $H_l$ and $R_{ll}$ as functions of leaf temperature ($T_l$) only. At steady state, [eq_Rs_enbal](#{eq_Rs_enbal}) must be satisfied, so we will substitute the above dictionary into eq_Rs_enbal, subtract $R_s$ and do a numerical search for the root of the equation to obtain steady-state leaf temperature:
 
-# In[24]:
+# In[27]:
 
 # Numerical search for steady-state Tl
 vdict[T_l] = find_root((eq_Rs_enbal - R_s).rhs().subs(vdict), 273, 373)

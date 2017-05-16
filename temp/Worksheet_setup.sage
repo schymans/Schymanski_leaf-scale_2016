@@ -20,12 +20,15 @@
 # ```
 # 
 
-# In[1]:
+# In[5]:
 
 get_ipython().magic(u'matplotlib inline')
 import numpy as np  # for data array operations
 import pylab   # for plotting
 import json   # for reading notebook metadata
+from functools import partial
+
+find_root = partial(find_root, rtol=1e-9)  # Setting tolerance to a higher value than standard
 
 list_plot.options["frame"]=True
 list_plot.options["axes"]=False
@@ -355,12 +358,41 @@ def fun_include_ipynb(worksheet, del1 = True, output = True):
         os.remove(str1)
 
 
+# In[4]:
+
+from functools import wraps
+
+def fun_tracker(attribute='fname'):
+    def _fun_tracker(f):
+        """
+        Create a wrapper to track what filenames were used in function calls.
+        Prepend the cell where you define the function with `@fun_tracker()`.
+        Essentially,
+        @fun_tracker()
+        def fun_plot_diag(): ...
+        does:
+        `fun_plot_diag = fun_tracker(fun_plot_diag)`
+        You can see the list of calls by typing:
+        fun_plot_diag.registry
+        """
+        f.registry = []
+
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if kwargs.get(attribute):
+                f.registry.append(kwargs[attribute])
+            return f(*args, **kwargs)    
+        return decorated
+    return _fun_tracker
+
+
+
 # Below, we export the above commands to a file called Worksheet_setup.sage in the temp folder, which can be loaded in other worksheets by typing:
 # 
 # `load('temp/Worksheet_setup.sage')`
 # However, to avoid re-exporting the file every time it is loaded, we will comment out the command and instead execute it from a different worksheet, Worksheet_update.ipynb.
 
-# In[2]:
+# In[ ]:
 
 #fun_export_ipynb('Worksheet_setup', 'temp/')
 
